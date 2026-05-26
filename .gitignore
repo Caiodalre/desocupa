@@ -1,0 +1,14 @@
+# Variáveis privadas
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+
+# Dependências e build
+node_modules
+.next
+
+# Arquivo de exemplo permitido
+!.env.example
