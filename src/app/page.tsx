@@ -1,8 +1,8 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
-  CheckCircle, ArrowRight, Shield, Brain, Bell, Calendar, Heart, Home, Wallet, FileText,
+  CheckCircle, ArrowRight, Shield, Brain, Calendar, Heart, Home, Wallet, FileText,
 } from "lucide-react";
 
 export default function LandingPage() {

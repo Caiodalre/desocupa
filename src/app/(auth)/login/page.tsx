@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -48,8 +48,8 @@ export default function LoginPage() {
       toast.success("Login realizado com sucesso!");
       router.push("/app");
       router.refresh();
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao fazer login");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Erro ao fazer login");
     } finally {
       setLoading(false);
     }

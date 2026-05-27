@@ -12,35 +12,63 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { formatRelativeDate, getDeadlineColor, cn } from "@/lib/utils";
 import { Plus, Search, Filter, CheckCircle2, Circle, Trash2, Edit } from "lucide-react";
+import type { Database } from "@/types/database";
+
+type Obligation = Database["public"]["Tables"]["obligations"]["Row"];
+type Category = Database["public"]["Tables"]["categories"]["Row"];
+type StatusFilter = "todas" | "active" | "completed" | "archived";
 
 interface ObligationsClientProps {
-  obligations: any[];
-  categories: any[];
+  obligations: Obligation[];
+  categories: Category[];
 }
 
 export function ObligationsClient({ obligations, categories }: ObligationsClientProps) {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("todas");
-  const [statusFilter, setStatusFilter] = useState("todas");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("todas");
   const router = useRouter();
-  const supabase = createClient();
 
-  const filteredObligations = obligations.filter((o) => {
-    const matchesSearch = o.title.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory = categoryFilter === "todas" || o.category_slug === categoryFilter;
-    const matchesStatus = statusFilter === "todas" || o.status === statusFilter;
+  const filteredObligations = obligations.filter((obligation) => {
+    const matchesSearch = obligation.title.toLowerCase().includes(search.toLowerCase());
+    const matchesCategory =
+      categoryFilter === "todas" || obligation.category_slug === categoryFilter;
+    const matchesStatus =
+      statusFilter === "todas" || obligation.status === statusFilter;
+
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
   const handleComplete = async (id: string) => {
-    await (supabase.from("obligations") as any).update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", id);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("obligations")
+      .update({
+        status: "completed",
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+
+    if (error) {
+      toast.error("Erro ao concluir obrigação.");
+      return;
+    }
+
     toast.success("Obrigação concluída!");
     router.refresh();
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir esta obrigação?")) return;
-    await (supabase.from("obligations") as any).delete().eq("id", id);
+    if (!window.confirm("Tem certeza que deseja excluir esta obrigação?")) return;
+
+    const supabase = createClient();
+    const { error } = await supabase.from("obligations").delete().eq("id", id);
+
+    if (error) {
+      toast.error("Erro ao excluir obrigação.");
+      return;
+    }
+
     toast.success("Obrigação excluída");
     router.refresh();
   };
@@ -49,16 +77,25 @@ export function ObligationsClient({ obligations, categories }: ObligationsClient
     <div className="space-y-6 pb-20">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-brand-deep">Obrigações</h1>
-        <Link href="/app/obrigacoes/nova">
-          <Button size="sm"><Plus className="mr-2 h-4 w-4" />Nova</Button>
-        </Link>
+        <Button size="sm" asChild>
+          <Link href="/app/obrigacoes/nova">
+            <Plus className="mr-2 h-4 w-4" />
+            Nova
+          </Link>
+        </Button>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Buscar obrigações..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          <Input
+            placeholder="Buscar obrigações..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className="pl-9"
+          />
         </div>
+
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="w-full sm:w-48">
             <Filter className="mr-2 h-4 w-4" />
@@ -66,12 +103,27 @@ export function ObligationsClient({ obligations, categories }: ObligationsClient
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todas">Todas categorias</SelectItem>
-            {categories.map((c) => (
-              <SelectItem key={c.slug} value={c.slug}>{c.name}</SelectItem>
+            {categories.map((category) => (
+              <SelectItem key={category.slug} value={category.slug}>
+                {category.name}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+
+        <Select
+          value={statusFilter}
+          onValueChange={(value) => {
+            if (
+              value === "todas" ||
+              value === "active" ||
+              value === "completed" ||
+              value === "archived"
+            ) {
+              setStatusFilter(value);
+            }
+          }}
+        >
           <SelectTrigger className="w-full sm:w-40">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -88,35 +140,93 @@ export function ObligationsClient({ obligations, categories }: ObligationsClient
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground">Nenhuma obrigação encontrada.</p>
-            <Link href="/app/obrigacoes/nova"><Button variant="outline" className="mt-4">Criar primeira obrigação</Button></Link>
+            <Button variant="outline" className="mt-4" asChild>
+              <Link href="/app/obrigacoes/nova">Criar primeira obrigação</Link>
+            </Button>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
-          {filteredObligations.map((o) => (
-            <Link key={o.id} href={`/app/obrigacoes/${o.id}`}>
-              <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
-                <CardContent className="flex items-center justify-between p-4">
-                  <div className="flex items-center gap-3">
-                    <button onClick={(e) => { e.preventDefault(); handleComplete(o.id); }}>
-                      {o.status === "completed" ? <CheckCircle2 className="h-5 w-5 text-success" /> : <Circle className="h-5 w-5 text-muted-foreground" />}
-                    </button>
-                    <div>
-                      <p className={cn("font-medium", o.status === "completed" && "line-through text-muted-foreground")}>{o.title}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        {o.category_slug && <Badge variant="outline" className="text-xs">{categories.find((c: any) => c.slug === o.category_slug)?.name || o.category_slug}</Badge>}
-                        {o.due_date && <span className={cn("text-xs", getDeadlineColor(o.due_date))}>{formatRelativeDate(o.due_date)}</span>}
+          {filteredObligations.map((obligation) => {
+            const categoryName =
+              categories.find((category) => category.slug === obligation.category_slug)?.name ??
+              obligation.category_slug;
+
+            return (
+              <Card key={obligation.id} className="transition-colors hover:bg-muted/50">
+                <CardContent className="flex items-center justify-between gap-3 p-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => void handleComplete(obligation.id)}
+                      disabled={obligation.status === "completed"}
+                      aria-label={`Marcar ${obligation.title} como concluída`}
+                    >
+                      {obligation.status === "completed" ? (
+                        <CheckCircle2 className="h-5 w-5 text-success" />
+                      ) : (
+                        <Circle className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </Button>
+
+                    <Link
+                      href={`/app/obrigacoes/${obligation.id}`}
+                      className="min-w-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <p
+                        className={cn(
+                          "truncate font-medium",
+                          obligation.status === "completed" &&
+                            "text-muted-foreground line-through"
+                        )}
+                      >
+                        {obligation.title}
+                      </p>
+                      <div className="mt-1 flex items-center gap-2">
+                        {categoryName && (
+                          <Badge variant="outline" className="text-xs">
+                            {categoryName}
+                          </Badge>
+                        )}
+                        {obligation.due_date && (
+                          <span
+                            className={cn(
+                              "text-xs",
+                              getDeadlineColor(obligation.due_date)
+                            )}
+                          >
+                            {formatRelativeDate(obligation.due_date)}
+                          </span>
+                        )}
                       </div>
-                    </div>
+                    </Link>
                   </div>
-                  <div className="flex items-center gap-1" onClick={(e) => e.preventDefault()}>
-                    <Button variant="ghost" size="icon" onClick={() => router.push(`/app/obrigacoes/${o.id}`)}><Edit className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(o.id)}><Trash2 className="h-4 w-4 text-danger" /></Button>
+
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" asChild>
+                      <Link
+                        href={`/app/obrigacoes/${obligation.id}`}
+                        aria-label={`Editar ${obligation.title}`}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => void handleDelete(obligation.id)}
+                      aria-label={`Excluir ${obligation.title}`}
+                    >
+                      <Trash2 className="h-4 w-4 text-danger" />
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
-            </Link>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

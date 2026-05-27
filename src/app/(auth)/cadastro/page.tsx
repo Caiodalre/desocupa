@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -58,8 +58,8 @@ export default function CadastroPage() {
 
       toast.success("Conta criada com sucesso!");
       router.push("/app");
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao criar conta");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Erro ao criar conta");
     } finally {
       setLoading(false);
     }

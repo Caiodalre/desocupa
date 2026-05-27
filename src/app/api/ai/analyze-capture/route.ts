@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getAIProvider, isAIConfigured } from "@/lib/ai";
 import { SafeUserContext } from "@/lib/ai/provider";
@@ -71,10 +71,10 @@ export async function POST(request: NextRequest) {
 
     const safeContext: SafeUserContext = {
       locale: "pt-BR",
-      existingCategories: (categories as any[])?.map((c: any) => c.slug) || [],
+      existingCategories: (categories ?? []).map((category) => category.slug),
       aiConsented: true,
-      availableTemplates: (templates as any[])?.map((t: any) => t.title) || [],
-      publishedDeadlines: (deadlines as any[])?.map((d: any) => ({ title: d.title, dueDate: d.due_date, category: d.category_slug || "outros" })) || [],
+      availableTemplates: (templates ?? []).map((template) => template.title),
+      publishedDeadlines: (deadlines ?? []).map((deadline) => ({ title: deadline.title, dueDate: deadline.due_date, category: deadline.category_slug || "outros" })),
     };
 
     if (!isAIConfigured()) {
@@ -88,10 +88,10 @@ export async function POST(request: NextRequest) {
     const result = await aiProvider.analyzeMentalCapture(sanitizedInput, safeContext);
 
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erro na análise:", error);
     return NextResponse.json(
-      { message: error.message || "Erro ao processar. Tente criar a tarefa manualmente." },
+      { message: error instanceof Error ? error.message : "Erro ao processar. Tente criar a tarefa manualmente." },
       { status: 500 }
     );
   }

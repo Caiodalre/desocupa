@@ -1,14 +1,12 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -18,7 +16,7 @@ interface Suggestion {
   title: string;
   category: string;
   type: string;
-  priority: string;
+  priority: "low" | "medium" | "high";
   suggestedDueDate: string | null;
   recurrence: string | null;
   nextStep: string;
@@ -33,7 +31,7 @@ export default function CapturaPage() {
   const [selected, setSelected] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
   const [manualTitle, setManualTitle] = useState("");
-  const [manualCategory, setManualCategory] = useState("outros");
+  const manualCategory = "outros";
   const router = useRouter();
   const supabase = createClient();
 
@@ -45,16 +43,16 @@ export default function CapturaPage() {
         setSuggestions(parsed.suggestions || []);
         setGeneralWarning(parsed.generalSensitiveWarning || null);
         if (parsed.suggestions?.length > 0) {
-          setSelected(parsed.suggestions.map((_: any, i: number) => i));
+          setSelected(parsed.suggestions.map((_: Suggestion, i: number) => i));
         }
-      } catch (e) {
-        toast.error("Erro ao carregar sugestões. Tente novamente.");
+      } catch {
+        toast.error("Erro ao carregar sugestÃƒÆ’Ã‚Âµes. Tente novamente.");
         router.push("/app");
       }
     } else {
       router.push("/app");
     }
-  }, []);
+  }, [router]);
 
   const toggleSelect = (index: number) => {
     setSelected((prev) =>
@@ -71,7 +69,7 @@ export default function CapturaPage() {
     let saved = 0;
 
     for (const s of toSave) {
-      const { error } = await (supabase.from("obligations") as any).insert({
+      const { error } = await supabase.from("obligations").insert({
         user_id: user.id,
         title: s.title,
         category_slug: s.category,
@@ -87,7 +85,7 @@ export default function CapturaPage() {
     }
 
     sessionStorage.removeItem("captureSuggestions");
-    toast.success(`${saved} obrigações salvas com sucesso!`);
+    toast.success(`${saved} obrigaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Âµes salvas com sucesso!`);
     router.push("/app/obrigacoes");
     setSaving(false);
   };
@@ -96,7 +94,7 @@ export default function CapturaPage() {
     if (!manualTitle.trim()) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/login"); return; }
-    await (supabase.from("obligations") as any).insert({
+    await supabase.from("obligations").insert({
       user_id: user.id,
       title: manualTitle.trim(),
       category_slug: manualCategory,
@@ -104,7 +102,7 @@ export default function CapturaPage() {
       status: "active",
       source_type: "manual",
     });
-    toast.success("Obrigação criada manualmente!");
+    toast.success("ObrigaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o criada manualmente!");
     router.push("/app/obrigacoes");
   };
 
@@ -112,7 +110,7 @@ export default function CapturaPage() {
     <div className="space-y-6 pb-20">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => router.push("/app")}><ArrowLeft className="h-5 w-5" /></Button>
-        <h1 className="text-2xl font-bold text-brand-deep">Revisar sugestões</h1>
+        <h1 className="text-2xl font-bold text-brand-deep">Revisar sugestÃƒÆ’Ã‚Âµes</h1>
       </div>
 
       {generalWarning && (
@@ -122,15 +120,15 @@ export default function CapturaPage() {
         </div>
       )}
 
-      <p className="text-muted-foreground">Selecione as tarefas que deseja salvar. Você pode editá-las depois.</p>
+      <p className="text-muted-foreground">Selecione as tarefas que deseja salvar. VocÃƒÆ’Ã‚Âª pode editÃƒÆ’Ã‚Â¡-las depois.</p>
 
       {suggestions.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Brain className="mx-auto h-12 w-12 text-muted-foreground" />
-            <p className="mt-4 text-muted-foreground">Nenhuma sugestão. Crie uma tarefa manualmente.</p>
+            <p className="mt-4 text-muted-foreground">Nenhuma sugestÃƒÆ’Ã‚Â£o. Crie uma tarefa manualmente.</p>
             <div className="mt-4 flex gap-2 justify-center">
-              <Input placeholder="Título da tarefa" value={manualTitle} onChange={(e) => setManualTitle(e.target.value)} className="max-w-xs" />
+              <Input placeholder="TÃƒÆ’Ã‚Â­tulo da tarefa" value={manualTitle} onChange={(e) => setManualTitle(e.target.value)} className="max-w-xs" />
               <Button onClick={handleManualCreate} disabled={!manualTitle.trim()}><Plus className="mr-2 h-4 w-4" />Criar</Button>
             </div>
           </CardContent>
@@ -146,11 +144,11 @@ export default function CapturaPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium">{s.title}</p>
                       <Badge variant="outline" className="text-xs">{s.category}</Badge>
-                      <Badge className={cn("text-xs", s.priority === "high" ? "bg-danger/10 text-danger" : s.priority === "medium" ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground")}>{s.priority === "high" ? "Alta" : s.priority === "medium" ? "Média" : "Baixa"}</Badge>
+                      <Badge className={cn("text-xs", s.priority === "high" ? "bg-danger/10 text-danger" : s.priority === "medium" ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground")}>{s.priority === "high" ? "Alta" : s.priority === "medium" ? "MÃƒÆ’Ã‚Â©dia" : "Baixa"}</Badge>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">{s.nextStep}</p>
                     {s.suggestedDueDate && (
-                      <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground"><Calendar className="h-3 w-3" />Sugestão: {new Date(s.suggestedDueDate).toLocaleDateString("pt-BR")}</div>
+                      <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground"><Calendar className="h-3 w-3" />SugestÃƒÆ’Ã‚Â£o: {new Date(s.suggestedDueDate).toLocaleDateString("pt-BR")}</div>
                     )}
                     {s.questions.length > 0 && (
                       <div className="mt-2">

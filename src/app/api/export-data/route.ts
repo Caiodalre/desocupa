@@ -1,9 +1,11 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   const supabase = await createServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ message: "Não autorizado" }, { status: 401 });
@@ -30,24 +32,22 @@ export async function GET(request: NextRequest) {
     .eq("id", user.id)
     .single();
 
-  const p = profile as any;
-
   const exportData = {
     exportedAt: new Date().toISOString(),
     profile: {
-      fullName: p?.full_name,
-      locale: p?.locale,
-      timezone: p?.timezone,
-      onboardingCompleted: p?.onboarding_completed,
+      fullName: profile?.full_name ?? null,
+      locale: profile?.locale ?? null,
+      timezone: profile?.timezone ?? null,
+      onboardingCompleted: profile?.onboarding_completed ?? null,
     },
-    obligations: obligations as any[],
-    worryEntries: worryEntries as any[],
-    weeklyReviews: reviews as any[],
+    obligations: obligations ?? [],
+    worryEntries: worryEntries ?? [],
+    weeklyReviews: reviews ?? [],
   };
 
   return NextResponse.json(exportData, {
     headers: {
-      "Content-Disposition": "attachment; filename=\"desocupa-dados.json\"",
+      "Content-Disposition": 'attachment; filename="desocupa-dados.json"',
     },
   });
 }
