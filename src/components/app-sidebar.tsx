@@ -1,18 +1,21 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Home, ListTodo, Brain, Calendar, Bell, Settings, LogOut, Inbox } from "lucide-react";
+import type { Profile } from "@/features/dashboard/types";
 
 interface AppSidebarProps {
-  user: any;
-  profile: any;
+  user: {
+    id: string;
+    email?: string;
+  };
+  profile: Profile | null;
   notificationCount: number;
 }
 
@@ -52,7 +55,7 @@ export function AppSidebar({ user, profile, notificationCount }: AppSidebarProps
             <Button variant={pathname === link.href ? "secondary" : "ghost"} className="w-full justify-start">
               <link.icon className="mr-3 h-5 w-5" />
               {link.label}
-              {link.badge && link.badge > 0 && (
+              {typeof link.badge === "number" && link.badge > 0 && (
                 <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-danger text-xs text-white">
                   {link.badge}
                 </span>
