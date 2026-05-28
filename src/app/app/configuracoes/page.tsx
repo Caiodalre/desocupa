@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -10,9 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Download, Trash2, Moon, Sun, Monitor } from "lucide-react";
-import type { Database } from "@/types/database";
+import { useTheme as useAppTheme } from "next-themes";
 
-type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type Theme = "light" | "dark" | "system";
 
 const themes: { value: Theme; label: string; icon: typeof Sun }[] = [
@@ -26,13 +25,13 @@ function isTheme(value: string | null): value is Theme {
 }
 
 export default function ConfiguracoesPage() {
-  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [fullName, setFullName] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [aiConsent, setAiConsent] = useState(false);
   const [theme, setTheme] = useState<Theme>("system");
   const router = useRouter();
+  const { setTheme: applyTheme } = useAppTheme();
 
   useEffect(() => {
     let active = true;
@@ -52,7 +51,7 @@ export default function ConfiguracoesPage() {
         .from("profiles")
         .select("*")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
       if (!active) return;
 
@@ -63,10 +62,11 @@ export default function ConfiguracoesPage() {
       }
 
       if (data) {
-        setProfile(data);
         setFullName(data.full_name ?? "");
         setAiConsent(data.ai_consent ?? false);
-        setTheme(isTheme(data.theme) ? data.theme : "system");
+        const savedTheme: Theme = isTheme(data.theme) ? data.theme : "system";
+        setTheme(savedTheme);
+        applyTheme(savedTheme);
       }
 
       setLoading(false);
@@ -77,32 +77,34 @@ export default function ConfiguracoesPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [applyTheme]);
 
   const handleSave = async () => {
-    if (!profile) {
-      toast.error("Perfil não encontrado.");
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      router.push("/login");
       return;
     }
 
-    const supabase = createClient();
     const { error } = await supabase
       .from("profiles")
-      .update({
+      .upsert({
+        id: user.id,
         full_name: fullName,
         ai_consent: aiConsent,
         theme,
       })
-      .eq("id", profile.id);
+      .select("*")
+      .single();
 
     if (error) {
       toast.error("Erro ao salvar");
       return;
     }
-
-    setProfile((current) =>
-      current ? { ...current, full_name: fullName, ai_consent: aiConsent, theme } : current
-    );
     toast.success("Configurações salvas");
   };
 
@@ -179,7 +181,10 @@ export default function ConfiguracoesPage() {
             <Button
               key={option.value}
               variant={theme === option.value ? "default" : "outline"}
-              onClick={() => setTheme(option.value)}
+              onClick={() => {
+                setTheme(option.value);
+                applyTheme(option.value);
+              }}
             >
               <option.icon className="mr-2 h-4 w-4" />
               {option.label}
