@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -104,6 +104,7 @@ export default function NovaObrigacaoPage() {
 
     toast.success("Obrigação criada com sucesso!");
     router.push("/app/obrigacoes");
+    router.refresh();
     setLoading(false);
   };
 
